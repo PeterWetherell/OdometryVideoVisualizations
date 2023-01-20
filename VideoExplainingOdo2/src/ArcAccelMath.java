@@ -17,7 +17,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
-public class ArcMath extends JPanel implements MouseListener, ActionListener, KeyListener{
+public class ArcAccelMath extends JPanel implements MouseListener, ActionListener, KeyListener{
 
 	Timer t;
 	Font big = new Font("Courier New", 1, 50);
@@ -45,10 +45,10 @@ public class ArcMath extends JPanel implements MouseListener, ActionListener, Ke
 	boolean startPlay = false;
 	
 	public static void main(String[] args) {
-		ArcMath drive = new ArcMath();
+		ArcAccelMath drive = new ArcAccelMath();
 	}
 	
-	public ArcMath() {
+	public ArcAccelMath() {
 		frame = new JFrame("VideoExplanation");
 		frame.setSize(1600, 934);
 		frame.add(this);
@@ -90,6 +90,9 @@ public class ArcMath extends JPanel implements MouseListener, ActionListener, Ke
 		
 		g2.setColor(Color.LIGHT_GRAY);
 		drawLines(poseHistory,g2);
+		
+		double[] startVel;
+		double c, d, relVelX, relVelY;
 
 		double t = (System.currentTimeMillis() - start)/(1000.0);
 		if (i != path.length) {
@@ -116,27 +119,21 @@ public class ArcMath extends JPanel implements MouseListener, ActionListener, Ke
 				case drawRelativeLocalization:
 					deltaHeading = currentPose.heading - lastPos.heading;
 					double dRLT = 2;
+
+					startVel = path[i].getVel(0.0);
+
+					d = path[i].getHeadingVel(0.0);
+					c = 2.0*(deltaHeading - d);
+
+					relVelX = startVel[0] * Math.cos(lastOdo.heading) + startVel[1] * Math.sin(lastOdo.heading);
+					relVelY = startVel[1] * Math.cos(lastOdo.heading) - startVel[0] * Math.sin(lastOdo.heading);
 					
-			        if (deltaHeading != 0) { // this avoids the issue where deltaHeading = 0 and then it goes to undefined. This effectively does L'Hopital's
-			            double r1 = relDeltaX / deltaHeading;
-						g2.setColor(Color.RED);
-						drawArc(g2,lastOdo,r1,0,deltaHeading,t/dRLT);
-						
-			            double r2 = relDeltaY / deltaHeading;
-						g2.setColor(Color.BLUE);
-						drawArc(g2,lastOdo,0,r2,deltaHeading,t/dRLT);
-						
-						g2.setColor(Color.magenta);
-						drawArc(g2,lastOdo,r1,r2,deltaHeading,t/dRLT);
-			        }
-			        else {
-						g2.setColor(Color.RED);
-						g2.drawLine((int)lastOdo.x,(int)lastOdo.y,(int)(lastOdo.x + relDeltaX * t/dRLT),(int)lastOdo.y);
-						g2.setColor(Color.BLUE);
-						g2.drawLine((int)lastOdo.x,(int)lastOdo.y,(int)lastOdo.x,(int)(lastOdo.y + relDeltaY * t/dRLT));
-						g2.setColor(Color.magenta);
-						g2.drawLine((int)lastOdo.x,(int)lastOdo.y,(int)(lastOdo.x + relDeltaX * t/dRLT),(int)(lastOdo.y + relDeltaY * t/dRLT));
-			        }
+					g2.setColor(Color.RED);
+					drawAccelArc(g2,lastOdo,2.0*(relDeltaX-relVelX),relVelX,0.0,0.0,c,d,t/dRLT);
+					g2.setColor(Color.BLUE);
+					drawAccelArc(g2,lastOdo,0.0,0.0,2.0*(relDeltaY-relVelY),relVelY,c,d,t/dRLT);
+					g2.setColor(Color.magenta);
+					drawAccelArc(g2,lastOdo,2.0*(relDeltaX-relVelX),relVelX,2.0*(relDeltaY-relVelY),relVelY,c,d,t/dRLT);
 
 					if (t > dRLT) {
 						rc = robotCase.drawLocalization;
@@ -145,50 +142,40 @@ public class ArcMath extends JPanel implements MouseListener, ActionListener, Ke
 					break;
 				case drawLocalization:
 					deltaHeading = currentPose.heading - lastPos.heading;
-					double dLT = Math.toDegrees((lastPos.heading+currentPose.heading)/2.0)/35.0;
-					double theta = (lastPos.heading+currentPose.heading)/2.0 * t/dLT;
+					double dLT = Math.abs(Math.toDegrees(currentPose.heading/70.0));
 					
-					if (deltaHeading == 0) {
-						g2.setColor(Color.RED);
-						g2.drawLine((int)lastOdo.x,(int)lastOdo.y,(int)(lastOdo.x + relDeltaX * Math.cos(theta)),(int)(lastOdo.y + relDeltaX * Math.sin(theta)));
-						g2.setColor(Color.BLUE);
-						g2.drawLine((int)lastOdo.x,(int)lastOdo.y,(int)(lastOdo.x - relDeltaY * Math.sin(theta)),(int)(lastOdo.y + relDeltaY * Math.cos(theta)));
-						
-						g2.setColor(Color.magenta);
-						g2.drawLine((int)lastOdo.x,(int)lastOdo.y,(int)(lastOdo.x + relDeltaX * Math.cos(theta) - relDeltaY * Math.sin(theta)),(int)(lastOdo.y + relDeltaX * Math.sin(theta) + relDeltaY * Math.cos(theta)));
-					}
-					else {
-			            double r1 = relDeltaX / deltaHeading;
-			            double r2 = relDeltaY / deltaHeading;
+					startVel = path[i].getVel(0.0);
 
-						g2.setColor(Color.RED);
-						drawArcRotating(g2,lastOdo,r1,0,deltaHeading,t/dLT);
-						
-						g2.setColor(Color.BLUE);
-						drawArcRotating(g2,lastOdo,0,r2,deltaHeading,t/dLT);
-						
-						g2.setColor(Color.magenta);
-						drawArcRotating(g2,lastOdo,r1,r2,deltaHeading,t/dLT);
-					}
+					relVelX = startVel[0] * Math.cos(lastOdo.heading) + startVel[1] * Math.sin(lastOdo.heading);
+					relVelY = startVel[1] * Math.cos(lastOdo.heading) - startVel[0] * Math.sin(lastOdo.heading);
+
+					d = path[i].getHeadingVel(0.0);
+					c = 2.0*(deltaHeading - d);
+
+					g2.setColor(Color.RED);
+					drawAccelArcRotating(g2,lastOdo,2.0*(relDeltaX-relVelX),relVelX,0.0,0.0,c,d,t/dLT);
+					g2.setColor(Color.BLUE);
+					drawAccelArcRotating(g2,lastOdo,0.0,0.0,2.0*(relDeltaY-relVelY),relVelY,c,d,t/dLT);
+					g2.setColor(Color.magenta);
+					drawAccelArcRotating(g2,lastOdo,2.0*(relDeltaX-relVelX),relVelX,2.0*(relDeltaY-relVelY),relVelY,c,d,t/dLT);
+					
 					
 					if (t > dLT) {
+						startVel = path[i].getVel(0.0);
+
+						relVelX = startVel[0] * Math.cos(lastOdo.heading) + startVel[1] * Math.sin(lastOdo.heading);
+						relVelY = startVel[1] * Math.cos(lastOdo.heading) - startVel[0] * Math.sin(lastOdo.heading);
+
+						d = path[i].getHeadingVel(0.0);
+						c = 2.0*(deltaHeading - d);
+						
+						lastOdo = accelArc(lastOdo,2.0*(relDeltaX-relVelX),relVelX,2.0*(relDeltaY-relVelY),relVelY,c,d,currentPose.heading);
+						odoHistory.add(lastOdo);
+						
+
 						i ++;
 						rc = robotCase.followTraj;
 						start = System.currentTimeMillis();
-				        if (deltaHeading != 0) { // this avoids the issue where deltaHeading = 0 and then it goes to undefined. This effectively does L'Hopital's
-							theta = lastPos.heading;
-				            double r1 = relDeltaX / deltaHeading;
-				            double r2 = relDeltaY / deltaHeading;
-				            relDeltaX = Math.sin(deltaHeading) * r1 - (1.0 - Math.cos(deltaHeading)) * r2;
-				            relDeltaY = (1.0 - Math.cos(deltaHeading)) * r1 + Math.sin(deltaHeading) * r2;
-				        }
-				        
-						lastOdo = new Pose2d(
-								lastOdo.x + relDeltaX * Math.cos(theta) - relDeltaY * Math.sin(theta),
-								lastOdo.y + relDeltaX * Math.sin(theta) + relDeltaY * Math.cos(theta),
-								currentPose.heading
-							);
-						odoHistory.add(lastOdo);
 					}
 					break;
 			}
@@ -204,12 +191,26 @@ public class ArcMath extends JPanel implements MouseListener, ActionListener, Ke
 					for (int j = 0; j < fidelity; j ++) {
 						double t1 = (j)/(double)fidelity;
 						double t2 = (j + 1)/(double)fidelity;
+						
+						double deltaHeading = path[i].getPose2d(t2).heading - path[i].getPose2d(t1).heading;
 
 						relDeltaX = path[i].getRelX(t1,t2);
 						relDeltaY = path[i].getRelY(t1,t2);
 
+						startVel = path[i].getVel(t1);
+						
+						relVelX = startVel[0] * Math.cos(lastOdo.heading) + startVel[1] * Math.sin(lastOdo.heading);
+						relVelY = startVel[1] * Math.cos(lastOdo.heading) - startVel[0] * Math.sin(lastOdo.heading);
+
+						d = path[i].getHeadingVel(t1);
+						c = 2.0*(deltaHeading - d);
+						
+						lastOdo = accelArc(lastOdo,2.0*(relDeltaX-relVelX),relVelX,2.0*(relDeltaY-relVelY),relVelY,c,d,path[i].getPose2d(t2).heading);
+						odoHistory.add(lastOdo);
+						
+						/*
+
 						double theta = (path[i].getPose2d(t1).heading+path[i].getPose2d(t2).heading)/2.0;
-						double deltaHeading = path[i].getPose2d(t2).heading - path[i].getPose2d(t1).heading;
 						
 				        if (deltaHeading != 0) { // this avoids the issue where deltaHeading = 0 and then it goes to undefined. This effectively does L'Hopital's
 							theta = path[i].getPose2d(t1).heading;
@@ -225,6 +226,7 @@ public class ArcMath extends JPanel implements MouseListener, ActionListener, Ke
 								path[i].getPose2d(t2).heading
 							);
 						odoHistory.add(lastOdo);
+						*/
 					}
 				}
 			}
@@ -256,32 +258,63 @@ public class ArcMath extends JPanel implements MouseListener, ActionListener, Ke
 		g2.fillPolygon(p1);
 	}
 	
-	public void drawArc(Graphics2D g,Pose2d lastOdo, double r1, double r2, double theta, double time) {
+	public void drawAccelArc(Graphics2D g, Pose2d lastOdo, double a1, double b1, double a2, double b2, double c, double d, double time) {
+		double randX = 0;
+		double randY = 0;
 		double fidelity = 0.01;
 		for (double t = fidelity; t < time; t += fidelity) {
+			double fwd = a1/2.0 * t * t + b1 * t - (a1/2.0 * (t-fidelity) * (t-fidelity) + b1 * (t-fidelity));
+			double str = a2/2.0 * t * t + b2 * t - (a2/2.0 * (t-fidelity) * (t-fidelity) + b2 * (t-fidelity));
+			double lastX = randX;
+			double lastY = randY;
+			randX += fwd*Math.cos(c/2.0 * t * t + d * t) - str*Math.sin(c/2.0 * t * t + d * t);
+			randY += fwd*Math.sin(c/2.0 * t * t + d * t) + str*Math.cos(c/2.0 * t * t + d * t);
 			g.drawLine(
-					(int)(lastOdo.x + r1*Math.sin(theta * (t-fidelity)) - r2 * (1 - Math.cos(theta * (t-fidelity)))),
-					(int)(lastOdo.y + r2*Math.sin(theta * (t-fidelity)) + r1 * (1 - Math.cos(theta * (t-fidelity)))),
-					(int)(lastOdo.x + r1*Math.sin(theta * t) - r2 * (1 - Math.cos(theta * t))),
-					(int)(lastOdo.y + r2*Math.sin(theta * t) + r1 * (1 - Math.cos(theta * t)))
+					(int)(lastOdo.x + lastX),
+					(int)(lastOdo.y + lastY),
+					(int)(lastOdo.x + randX),
+					(int)(lastOdo.y + randY)
 				);
 		}
 	}
 	
-	public void drawArcRotating(Graphics2D g,Pose2d lastOdo, double r1, double r2, double theta, double time) {
+	public void drawAccelArcRotating(Graphics2D g, Pose2d lastOdo, double a1, double b1, double a2, double b2, double c, double d, double time) {
+		double randX = 0;
+		double randY = 0;
 		double fidelity = 0.01;
-		for (double t = fidelity; t < 1; t += fidelity) {
-			double deltaX1 = r1*Math.sin(theta * (t-fidelity)) - r2 * (1 - Math.cos(theta * (t-fidelity)));
-			double deltaY1 = r2*Math.sin(theta * (t-fidelity)) + r1 * (1 - Math.cos(theta * (t-fidelity)));
-			double deltaX2 = r1*Math.sin(theta * t) - r2 * (1 - Math.cos(theta * t));
-			double deltaY2 = r2*Math.sin(theta * t) + r1 * (1 - Math.cos(theta * t));
+		for (double t = fidelity; t < 1.0; t += fidelity) {
+			double fwd = a1/2.0 * t * t + b1 * t - (a1/2.0 * (t-fidelity) * (t-fidelity) + b1 * (t-fidelity));
+			double str = a2/2.0 * t * t + b2 * t - (a2/2.0 * (t-fidelity) * (t-fidelity) + b2 * (t-fidelity));
+			double lastX = randX;
+			double lastY = randY;
+			randX += fwd*Math.cos(c/2.0 * t * t + d * t) - str*Math.sin(c/2.0 * t * t + d * t);
+			randY += fwd*Math.sin(c/2.0 * t * t + d * t) + str*Math.cos(c/2.0 * t * t + d * t);
 			g.drawLine(
-					(int)(lastOdo.x + deltaX1 * Math.cos(lastOdo.heading * time) - deltaY1 * Math.sin(lastOdo.heading * time)),
-					(int)(lastOdo.y + deltaY1 * Math.cos(lastOdo.heading * time) + deltaX1 * Math.sin(lastOdo.heading * time)),
-					(int)(lastOdo.x + deltaX1 * Math.cos(lastOdo.heading * time) - deltaY1 * Math.sin(lastOdo.heading * time)),
-					(int)(lastOdo.y + deltaY1 * Math.cos(lastOdo.heading * time) + deltaX1 * Math.sin(lastOdo.heading * time))
+					(int)(lastOdo.x + lastX*Math.cos(lastOdo.heading * time) - lastY*Math.sin(lastOdo.heading * time)),
+					(int)(lastOdo.y + lastY*Math.cos(lastOdo.heading * time) + lastX*Math.sin(lastOdo.heading * time)),
+					(int)(lastOdo.x + randX*Math.cos(lastOdo.heading * time) - randY*Math.sin(lastOdo.heading * time)),
+					(int)(lastOdo.y + randY*Math.cos(lastOdo.heading * time) + randX*Math.sin(lastOdo.heading * time))
 				);
 		}
+	}
+	
+	public Pose2d accelArc(Pose2d lastOdo, double a1, double b1, double a2, double b2, double c, double d, double heading) {
+		double randX = 0;
+		double randY = 0;
+		double fidelity = 0.0001;
+		for (double t = fidelity; t < 1.0; t += fidelity) {
+			double fwd = a1/2.0 * t * t + b1 * t - (a1/2.0 * (t-fidelity) * (t-fidelity) + b1 * (t-fidelity));
+			double str = a2/2.0 * t * t + b2 * t - (a2/2.0 * (t-fidelity) * (t-fidelity) + b2 * (t-fidelity));
+			double lastX = randX;
+			double lastY = randY;
+			randX += fwd*Math.cos(c/2.0 * t * t + d * t) - str*Math.sin(c/2.0 * t * t + d * t);
+			randY += fwd*Math.sin(c/2.0 * t * t + d * t) + str*Math.cos(c/2.0 * t * t + d * t);
+		}
+		return new Pose2d(
+					lastOdo.x + randX*Math.cos(lastOdo.heading) - randY*Math.sin(lastOdo.heading),
+					lastOdo.y + randY*Math.cos(lastOdo.heading) + randX*Math.sin(lastOdo.heading),
+					heading
+				);
 	}
 	
 	public void drawLines(ArrayList<Pose2d> p, Graphics2D g2) {

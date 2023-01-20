@@ -100,4 +100,8 @@ public class cubicSpline {
 		}
 		return v;
 	}
+
+	public double getHeadingVel(double t) {
+		return (getPose2d(t+0.0001).heading - getPose2d(t-0.0001).heading)/0.0002;
+	}
 }
